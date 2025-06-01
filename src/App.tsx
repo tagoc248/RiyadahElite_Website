@@ -6,6 +6,7 @@ import Toast from './components/ui/Toast';
 import { AuthProvider } from './context/AuthContext';
 import ScrollToTop from './components/utils/ScrollToTop';
 import ProtectedRoute from './components/utils/ProtectedRoute';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Lazy load pages to improve initial load performance
 const Home = lazy(() => import('./pages/Home'));
@@ -25,45 +26,47 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 function App() {
   return (
-    <AuthProvider>
-      <ScrollToTop />
-      <Toast />
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="community" element={<Community />} />
-            <Route path="game-test" element={<GameTest />} />
-            <Route path="production" element={<Production />} />
-            <Route path="arena" element={<Arena />} />
-            <Route path="tournaments" element={<Tournaments />} />
-            <Route path="rewards" element={<Rewards />} />
-            <Route path="contact" element={<Contact />} />
-            <Route path="faq" element={<Faq />} />
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route
-              path="dashboard/*"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="admin/*"
-              element={
-                <ProtectedRoute adminOnly>
-                  <AdminPanel />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </Suspense>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ScrollToTop />
+        <Toast />
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="community" element={<Community />} />
+              <Route path="game-test" element={<GameTest />} />
+              <Route path="production" element={<Production />} />
+              <Route path="arena" element={<Arena />} />
+              <Route path="tournaments" element={<Tournaments />} />
+              <Route path="rewards" element={<Rewards />} />
+              <Route path="contact" element={<Contact />} />
+              <Route path="faq" element={<Faq />} />
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
+              <Route
+                path="dashboard/*"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/*"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
-export default App;
+export default App

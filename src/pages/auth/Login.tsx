@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '../../components/ui/Logo';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { login, googleAuth } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,7 +26,6 @@ const Login = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
     } catch (err) {
       setError('Invalid email or password');
     } finally {
@@ -31,10 +33,21 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Mock Google login for now
-    console.log('Google login clicked');
-  };
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (response) => {
+      setIsGoogleLoading(true);
+      try {
+        await googleAuth(response.access_token);
+      } catch (error) {
+        setError('Google login failed. Please try again.');
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      setError('Google login failed. Please try again.');
+    }
+  });
 
   return (
     <div className="min-h-screen py-32 bg-background flex items-center justify-center">
@@ -114,7 +127,11 @@ const Login = () => {
               disabled={isLoading}
               className="w-full btn btn-primary"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? (
+                <LoadingSpinner size={20} className="mx-auto" />
+              ) : (
+                'Sign in'
+              )}
             </button>
 
             <div className="relative">
@@ -128,11 +145,18 @@ const Login = () => {
 
             <button
               type="button"
-              onClick={handleGoogleLogin}
+              onClick={() => handleGoogleLogin()}
+              disabled={isGoogleLoading}
               className="w-full btn btn-outline flex items-center justify-center gap-2"
             >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-              Sign in with Google
+              {isGoogleLoading ? (
+                <LoadingSpinner size={20} />
+              ) : (
+                <>
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                  Sign in with Google
+                </>
+              )}
             </button>
           </form>
 

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { auth } from '../services/api';
+import toast from 'react-hot-toast';
 
 // Define User type
 type User = {
@@ -7,6 +9,7 @@ type User = {
   name: string;
   email: string;
   created_at: string;
+  role?: 'user' | 'admin';
 };
 
 // Define AuthContextType
@@ -34,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Check for existing session on initial load
   useEffect(() => {
@@ -47,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('token');
+        toast.error('Session expired. Please login again.');
       } finally {
         setIsLoading(false);
       }
@@ -62,8 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', token);
       const userData = await auth.getProfile();
       setUser(userData);
+      toast.success('Welcome back!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
+      toast.error('Invalid email or password');
       throw error;
     } finally {
       setIsLoading(false);
@@ -77,8 +85,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', token);
       const userData = await auth.getProfile();
       setUser(userData);
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Registration failed:', error);
+      toast.error('Registration failed. Please try again.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -92,8 +103,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', authToken);
       const userData = await auth.getProfile();
       setUser(userData);
+      toast.success('Logged in with Google successfully!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Google auth failed:', error);
+      toast.error('Google login failed. Please try again.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -103,6 +117,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
+    toast.success('Logged out successfully');
+    navigate('/');
   };
 
   return (

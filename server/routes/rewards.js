@@ -1,13 +1,13 @@
 import express from 'express';
-import { db } from '../models/database.js';
 import { verifyToken } from '../middleware/auth.js';
+import { getAllRewards, claimReward } from '../models/database.js';
 
 const router = express.Router();
 
 // Get all rewards
 router.get('/rewards', async (req, res) => {
   try {
-    const rewards = db.prepare('SELECT * FROM rewards').all();
+    const rewards = getAllRewards();
     res.json(rewards);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -20,16 +20,7 @@ router.post('/rewards/claim', verifyToken, async (req, res) => {
     const { rewardId } = req.body;
     const userId = req.user.id;
 
-    // Check if reward exists
-    const reward = db.prepare('SELECT * FROM rewards WHERE id = ?').get(rewardId);
-    if (!reward) {
-      return res.status(404).json({ error: 'Reward not found' });
-    }
-
-    // Add claim
-    const result = db.prepare(
-      'INSERT INTO claims (user_id, reward_id) VALUES (?, ?)'
-    ).run(userId, rewardId);
+    const result = claimReward(userId, rewardId);
 
     res.json({
       id: result.lastInsertRowid,
