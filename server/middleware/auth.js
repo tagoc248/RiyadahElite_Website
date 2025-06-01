@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { getUserById } from '../models/database.js';
+import { getUserById } from '../config/database.js';
 
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
 
@@ -10,7 +10,7 @@ export const verifyToken = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = getUserById(decoded.id);
+    const user = await getUserById(decoded.id);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid token.' });
@@ -23,8 +23,8 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
-export const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+export const isAdmin = async (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Access denied. Admin only.' });
   }
   next();

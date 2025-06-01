@@ -5,11 +5,11 @@ import { body, validationResult } from 'express-validator';
 import { OAuth2Client } from 'google-auth-library';
 import { verifyToken } from '../middleware/auth.js';
 import {
-  getUserByEmail,
   createUser,
+  getUserByEmail,
   getUserByGoogleId,
-  createGoogleUser
-} from '../models/database.js';
+  getUserById
+} from '../config/database.js';
 
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -31,7 +31,7 @@ router.post('/register', registerValidation, async (req, res) => {
 
     const { name, email, password } = req.body;
 
-    const existingUser = getUserByEmail(email);
+    const existingUser = await getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -39,12 +39,28 @@ router.post('/register', registerValidation, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const result = createUser(name, email, passwordHash);
-    const token = jwt.sign({ id: result.lastInsertRowid }, process.env.JWT_SECRET);
+    const result = await createUser({ 
+      name, 
+      email, 
+      passwordHash,
+      role: 'user'
+    });
+    
+    const user = await getUserById(result.lastID);
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
 
-    res.json({ token });
+    res.json({ 
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -53,7 +69,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
@@ -64,9 +80,19 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
-    res.json({ token });
+    res.json({ 
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
+      }
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
@@ -79,27 +105,52 @@ router.post('/google-auth', async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID
     });
 
-    const { sub: googleId, email, name } = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
 
-    let user = getUserByGoogleId(googleId);
+    let user = await getUserByGoogleId(googleId);
     if (!user) {
-      const result = createGoogleUser(name, email, googleId);
-      user = { id: result.lastInsertRowid };
+      const result = await createUser({
+        name,
+        email,
+        googleId,
+        role: 'user',
+        avatar: picture
+      });
+      user = await getUserById(result.lastID);
     }
 
     const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
-    res.json({ token: jwtToken });
+    res.json({ 
+      token: jwtToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
+      }
+    });
   } catch (error) {
+    console.error('Google auth error:', error);
     res.status(500).json({ error: 'Google authentication failed' });
   }
 });
 
 // Get profile
-router.get('/profile', verifyToken, (req, res) => {
+router.get('/profile', verifyToken, async (req, res) => {
   try {
-    res.json(req.user);
+    const user = await getUserById(req.user.id);
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      created_at: user.created_at
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 

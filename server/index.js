@@ -1,10 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import morgan from 'morgan';
+import helmet from 'helmet';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import { initializeDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import tournamentRoutes from './routes/tournaments.js';
 import rewardRoutes from './routes/rewards.js';
-import { initializeDatabase } from './models/database.js';
 
 dotenv.config();
 
@@ -17,11 +21,20 @@ initializeDatabase();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(morgan('dev'));
+app.use(helmet());
+app.use(compression());
+app.use(cookieParser());
 
 // Routes
 app.use('/api', authRoutes);
 app.use('/api', tournamentRoutes);
 app.use('/api', rewardRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
