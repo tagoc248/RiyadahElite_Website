@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '../../components/ui/Logo';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { login, googleAuth } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     document.title = 'Login | Riyadah Elite';
@@ -21,13 +22,18 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
 
     try {
       await login(email, password);
-    } catch (err) {
-      setError('Invalid email or password');
+      toast.success('Welcome back!');
+      
+      // Redirect to the intended page or dashboard
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -38,14 +44,17 @@ const Login = () => {
       setIsGoogleLoading(true);
       try {
         await googleAuth(response.access_token);
+        toast.success('Successfully logged in with Google!');
+        navigate('/dashboard');
       } catch (error) {
-        setError('Google login failed. Please try again.');
+        console.error('Google login error:', error);
+        toast.error('Google login failed. Please try again.');
       } finally {
         setIsGoogleLoading(false);
       }
     },
     onError: () => {
-      setError('Google login failed. Please try again.');
+      toast.error('Google login failed. Please try again.');
     }
   });
 
@@ -64,12 +73,6 @@ const Login = () => {
 
         <div className="card border-primary/30">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-sm">
-                {error}
-              </div>
-            )}
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-1">
                 Email Address

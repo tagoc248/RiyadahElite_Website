@@ -2,47 +2,90 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '../../components/ui/Logo';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const { register, googleAuth } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     document.title = 'Register | Riyadah Elite';
   }, []);
 
+  const validateForm = () => {
+    if (!username.trim()) {
+      toast.error('Username is required');
+      return false;
+    }
+    if (!email.trim()) {
+      toast.error('Email is required');
+      return false;
+    }
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return false;
+    }
+    if (!termsAccepted) {
+      toast.error('Please accept the terms and conditions');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    
+    if (!validateForm()) return;
+    
     setIsLoading(true);
-
     try {
       await register(username, email, password);
+      toast.success('Account created successfully!');
       navigate('/dashboard');
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      if (error.response?.data?.error === 'User already exists') {
+        toast.error('Email is already registered');
+      } else {
+        toast.error('Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignup = () => {
-    // Mock Google signup for now
-    console.log('Google signup clicked');
-  };
+  const handleGoogleSignup = useGoogleLogin({
+    onSuccess: async (response) => {
+      setIsGoogleLoading(true);
+      try {
+        await googleAuth(response.access_token);
+        toast.success('Account created successfully with Google!');
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Google signup error:', error);
+        toast.error('Google signup failed. Please try again.');
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      toast.error('Google signup failed. Please try again.');
+    }
+  });
 
   return (
     <div className="min-h-screen py-32 bg-background flex items-center justify-center">
@@ -59,12 +102,6 @@ const Register = () => {
 
         <div className="card border-primary/30">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-sm">
-                {error}
-              </div>
-            )}
-
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-neutral-300 mb-1">
                 Username
@@ -115,6 +152,7 @@ const Register = () => {
                   className="w-full pl-10 pr-4 py-2 bg-background border border-neutral-700 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-neutral-200"
                   placeholder="Create a password"
                   required
+                  minLength={6}
                 />
               </div>
             </div>
@@ -142,8 +180,10 @@ const Register = () => {
                 <input
                   id="terms"
                   type="checkbox"
-                  required
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="h-4 w-4 rounded border-neutral-700 text-primary focus:ring-primary bg-background"
+                  required
                 />
               </div>
               <div className="ml-3 text-sm">
@@ -165,7 +205,11 @@ const Register = () => {
               disabled={isLoading}
               className="w-full btn btn-primary"
             >
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? (
+                <LoadingSpinner size={20} className="mx-auto" />
+              ) : (
+                'Create account'
+              )}
             </button>
 
             <div className="relative">
@@ -179,11 +223,18 @@ const Register = () => {
 
             <button
               type="button"
-              onClick={handleGoogleSignup}
+              onClick={() => handleGoogleSignup()}
+              disabled={isGoogleLoading}
               className="w-full btn btn-outline flex items-center justify-center gap-2"
             >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-              Sign up with Google
+              {isGoogleLoading ? (
+                <LoadingSpinner size={20} />
+              ) : (
+                <>
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                  Sign up with Google
+                </>
+              )}
             </button>
           </form>
 
