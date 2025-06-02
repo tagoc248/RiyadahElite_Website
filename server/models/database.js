@@ -10,14 +10,12 @@ const dbPath = join(__dirname, '../data/riyadah.db');
 export const db = new Database(dbPath);
 
 export function initializeDatabase() {
-  // Users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT,
-      google_id TEXT UNIQUE,
       role TEXT DEFAULT 'user',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -85,18 +83,6 @@ export function createUser(name, email, passwordHash) {
     VALUES (?, ?, ?)
   `);
   return stmt.run(name, email, passwordHash);
-}
-
-export function createGoogleUser(name, email, googleId) {
-  const stmt = db.prepare(`
-    INSERT INTO users (name, email, google_id)
-    VALUES (?, ?, ?)
-  `);
-  return stmt.run(name, email, googleId);
-}
-
-export function getUserByGoogleId(googleId) {
-  return db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId);
 }
 
 export function getAllTournaments() {

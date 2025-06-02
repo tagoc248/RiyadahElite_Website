@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '../../components/ui/Logo';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -10,9 +9,9 @@ import toast from 'react-hot-toast';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { login, googleAuth } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,43 +19,50 @@ const Login = () => {
     document.title = 'Login | Riyadah Elite';
   }, []);
 
+  const validateForm = () => {
+    if (!email.trim()) {
+      toast.error('Email is required');
+      return false;
+    }
+    if (!password) {
+      toast.error('Password is required');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
+    if (!validateForm()) return;
+
+    setIsLoading(true);
     try {
       await login(email, password);
-      toast.success('Welcome back!');
-      
-      // Redirect to the intended page or dashboard
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
       const from = (location.state as any)?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error('Invalid email or password');
+      toast.error(error.response?.data?.error || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (response) => {
-      setIsGoogleLoading(true);
-      try {
-        await googleAuth(response.access_token);
-        toast.success('Successfully logged in with Google!');
-        navigate('/dashboard');
-      } catch (error) {
-        console.error('Google login error:', error);
-        toast.error('Google login failed. Please try again.');
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    },
-    onError: () => {
-      toast.error('Google login failed. Please try again.');
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
     }
-  });
+  }, []);
 
   return (
     <div className="min-h-screen py-32 bg-background flex items-center justify-center">
@@ -114,6 +120,8 @@ const Login = () => {
                 <input
                   id="remember"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 rounded border-neutral-700 text-primary focus:ring-primary bg-background"
                 />
                 <label htmlFor="remember" className="ml-2 block text-sm text-neutral-400">
@@ -134,31 +142,6 @@ const Login = () => {
                 <LoadingSpinner size={20} className="mx-auto" />
               ) : (
                 'Sign in'
-              )}
-            </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-background-secondary text-neutral-400">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleGoogleLogin()}
-              disabled={isGoogleLoading}
-              className="w-full btn btn-outline flex items-center justify-center gap-2"
-            >
-              {isGoogleLoading ? (
-                <LoadingSpinner size={20} />
-              ) : (
-                <>
-                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  Sign in with Google
-                </>
               )}
             </button>
           </form>

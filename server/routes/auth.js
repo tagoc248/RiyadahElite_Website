@@ -2,17 +2,14 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import { OAuth2Client } from 'google-auth-library';
 import { verifyToken } from '../middleware/auth.js';
 import {
   createUser,
   getUserByEmail,
-  getUserByGoogleId,
   getUserById
 } from '../config/database.js';
 
 const router = express.Router();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Register validation middleware
 const registerValidation = [
@@ -86,53 +83,12 @@ router.post('/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        avatar: user.avatar
+        role: user.role
       }
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-// Google Auth
-router.post('/google-auth', async (req, res) => {
-  try {
-    const { token } = req.body;
-    const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-
-    const { sub: googleId, email, name, picture } = ticket.getPayload();
-
-    let user = await getUserByGoogleId(googleId);
-    if (!user) {
-      const result = await createUser({
-        name,
-        email,
-        googleId,
-        role: 'user',
-        avatar: picture
-      });
-      user = await getUserById(result.lastID);
-    }
-
-    const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
-    res.json({ 
-      token: jwtToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar
-      }
-    });
-  } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(500).json({ error: 'Google authentication failed' });
   }
 });
 
@@ -145,7 +101,6 @@ router.get('/profile', verifyToken, async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.avatar,
       created_at: user.created_at
     });
   } catch (error) {

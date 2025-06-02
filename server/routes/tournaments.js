@@ -1,14 +1,14 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { verifyToken, isAdmin } from '../middleware/auth.js';
-import { db } from '../config/database.js';
+import { getAllTournaments, createTournament, getOne, runQuery } from '../config/database.js';
 
 const router = express.Router();
 
 // Get all tournaments
 router.get('/tournaments', async (req, res) => {
   try {
-    const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY date DESC').all();
+    const tournaments = await getAllTournaments();
     res.json(tournaments);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -18,7 +18,7 @@ router.get('/tournaments', async (req, res) => {
 // Get tournament by ID
 router.get('/tournaments/:id', async (req, res) => {
   try {
-    const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+    const tournament = await getOne('SELECT * FROM tournaments WHERE id = ?', [req.params.id]);
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
     }
@@ -49,10 +49,7 @@ router.post(
 
       const { title, description, date, prizePool, maxParticipants } = req.body;
       
-      const result = db.prepare(`
-        INSERT INTO tournaments (title, description, date, prize_pool, max_participants)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(title, description, date, prizePool, maxParticipants);
+      const result = await createTournament({ title, description, date, prizePool, maxParticipants });
 
       res.json({
         id: result.lastInsertRowid,
@@ -74,7 +71,7 @@ router.post('/tournaments/:id/join', verifyToken, async (req, res) => {
     const tournamentId = req.params.id;
     const userId = req.user.id;
 
-    const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
+    const tournament = await getOne('SELECT * FROM tournaments WHERE id = ?', [tournamentId]);
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
     }
@@ -83,16 +80,15 @@ router.post('/tournaments/:id/join', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Tournament is full' });
     }
 
-    db.prepare(`
-      INSERT INTO tournament_participants (tournament_id, user_id)
-      VALUES (?, ?)
-    `).run(tournamentId, userId);
+    await runQuery(
+      'INSERT INTO tournament_participants (tournament_id, user_id) VALUES (?, ?)',
+      [tournamentId, userId]
+    );
 
-    db.prepare(`
-      UPDATE tournaments 
-      SET current_participants = current_participants + 1 
-      WHERE id = ?
-    `).run(tournamentId);
+    await runQuery(
+      'UPDATE tournaments SET current_participants = current_participants + 1 WHERE id = ?',
+      [tournamentId]
+    );
 
     res.json({ message: 'Successfully joined tournament' });
   } catch (error) {

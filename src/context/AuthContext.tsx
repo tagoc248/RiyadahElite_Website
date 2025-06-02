@@ -12,14 +12,12 @@ type User = {
   role?: 'user' | 'admin';
 };
 
-// Define AuthContextType
 type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
-  googleAuth: (token: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -30,7 +28,6 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: async () => {},
   register: async () => {},
-  googleAuth: async () => {},
   logout: () => {},
 });
 
@@ -96,24 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const googleAuth = async (token: string) => {
-    setIsLoading(true);
-    try {
-      const { token: authToken } = await auth.googleAuth(token);
-      localStorage.setItem('token', authToken);
-      const userData = await auth.getProfile();
-      setUser(userData);
-      toast.success('Logged in with Google successfully!');
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Google auth failed:', error);
-      toast.error('Google login failed. Please try again.');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
@@ -129,7 +108,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         login,
         register,
-        googleAuth,
         logout,
       }}
     >

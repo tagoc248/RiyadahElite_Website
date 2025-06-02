@@ -44,14 +44,12 @@ export async function initializeDatabase() {
     db = new sqlite3.Database(dbPath);
     db.run('PRAGMA foreign_keys = ON');
 
-    // Users table
     await runQuery(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        password_hash TEXT,
-        google_id TEXT UNIQUE,
+        password_hash TEXT NOT NULL,
         role TEXT DEFAULT 'user',
         avatar TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -61,16 +59,16 @@ export async function initializeDatabase() {
     // Create admin user if not exists
     const adminEmail = 'admin@gmail.com';
     const admin = await getOne('SELECT * FROM users WHERE email = ?', [adminEmail]);
-    
+
     if (!admin) {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash('Admin@123', salt);
-      
+
       await runQuery(`
         INSERT INTO users (name, email, password_hash, role)
         VALUES (?, ?, ?, ?)
       `, ['Admin', adminEmail, passwordHash, 'admin']);
-      
+
       console.log('Admin user created successfully');
     }
 
@@ -153,19 +151,19 @@ export function getDatabase() {
 }
 
 // User operations
-export async function createUser({ name, email, passwordHash, googleId = null, role = 'user', avatar = null }) {
+export async function createUser({ name, email, passwordHash, role = 'user', avatar = null }) {
   const result = await runQuery(
-    `INSERT INTO users (name, email, password_hash, google_id, role, avatar)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, email, passwordHash, googleId, role, avatar]
+    `INSERT INTO users (name, email, password_hash, role, avatar)
+     VALUES (?, ?, ?, ?, ?)`,
+    [name, email, passwordHash, role, avatar]
   );
-  
+
   // Initialize user points
   await runQuery(
     'INSERT INTO user_points (user_id) VALUES (?)',
     [result.lastID]
   );
-  
+
   return result;
 }
 
@@ -178,10 +176,6 @@ export async function getUserById(id) {
     'SELECT id, name, email, role, avatar, created_at FROM users WHERE id = ?',
     [id]
   );
-}
-
-export async function getUserByGoogleId(googleId) {
-  return await getOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
 }
 
 // Tournament operations
@@ -225,13 +219,11 @@ export async function claimReward(userId, rewardId) {
       db.run('BEGIN TRANSACTION');
 
       try {
-        // Deduct points
         db.run(
           'UPDATE user_points SET points = points - ? WHERE user_id = ?',
           [reward.points_required, userId]
         );
-        
-        // Record claim
+
         db.run(
           'INSERT INTO claims (user_id, reward_id) VALUES (?, ?)',
           [userId, rewardId]
@@ -246,3 +238,6 @@ export async function claimReward(userId, rewardId) {
     });
   });
 }
+
+// Export helper functions
+export { getOne, runQuery };

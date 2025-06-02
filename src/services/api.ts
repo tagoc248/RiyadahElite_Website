@@ -51,11 +51,6 @@ export const auth = {
     return response.data;
   },
 
-  googleAuth: async (token: string) => {
-    const response = await api.post('/google-auth', { token });
-    return response.data;
-  },
-
   getProfile: async () => {
     const response = await api.get('/profile');
     return response.data;

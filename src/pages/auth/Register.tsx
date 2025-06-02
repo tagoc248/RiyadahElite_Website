@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useGoogleLogin } from '@react-oauth/google';
 import Logo from '../../components/ui/Logo';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -13,9 +12,8 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const { register, googleAuth } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,9 +46,9 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
     try {
       await register(username, email, password);
@@ -67,25 +65,6 @@ const Register = () => {
       setIsLoading(false);
     }
   };
-
-  const handleGoogleSignup = useGoogleLogin({
-    onSuccess: async (response) => {
-      setIsGoogleLoading(true);
-      try {
-        await googleAuth(response.access_token);
-        toast.success('Account created successfully with Google!');
-        navigate('/dashboard');
-      } catch (error) {
-        console.error('Google signup error:', error);
-        toast.error('Google signup failed. Please try again.');
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    },
-    onError: () => {
-      toast.error('Google signup failed. Please try again.');
-    }
-  });
 
   return (
     <div className="min-h-screen py-32 bg-background flex items-center justify-center">
@@ -209,31 +188,6 @@ const Register = () => {
                 <LoadingSpinner size={20} className="mx-auto" />
               ) : (
                 'Create account'
-              )}
-            </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-background-secondary text-neutral-400">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleGoogleSignup()}
-              disabled={isGoogleLoading}
-              className="w-full btn btn-outline flex items-center justify-center gap-2"
-            >
-              {isGoogleLoading ? (
-                <LoadingSpinner size={20} />
-              ) : (
-                <>
-                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  Sign up with Google
-                </>
               )}
             </button>
           </form>
