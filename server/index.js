@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import tournamentRoutes from './routes/tournaments.js';
 import rewardRoutes from './routes/rewards.js';
 
+// Load environment variables from .env file
 dotenv.config();
 
 const app = express();
@@ -26,7 +27,7 @@ app.use(helmet());
 app.use(compression());
 app.use(cookieParser());
 
-// Routes
+// API Routes
 app.use('/api', authRoutes);
 app.use('/api', tournamentRoutes);
 app.use('/api', rewardRoutes);
@@ -42,6 +43,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Start HTTP server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
